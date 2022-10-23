@@ -44,6 +44,8 @@ contract AMA_SponsorEscrow {
 
     uint256 public nEscrow;
     mapping(uint256 => Escrow) public escrows; // List of escrows the sponsor has
+    //track when a user can request again
+    mapping(address => uint256) public lockTime;
 
     constructor() {
         //address ama_callerAddr = 0xca8B0f4885DBef091b090395170AFE85cd1D011E;
@@ -162,12 +164,19 @@ contract AMA_SponsorEscrow {
     function userFaucet(uint256 id, uint256 requestValue) public onlyWhitelisted returns (uint256) {
         //** limit requests for funds per address per period
         require(escrows[id].escrowState == State.ACTIVE, "Escrow unavailable to faucet");
+        require(requestValue <= 8, "Request level exceeded");
+        require(block.timestamp > lockTime[msg.sender], "You can't request again so soon. Please try again later");
+
         uint256 funds = escrows[id].funds;
         if (requestValue > funds) {
             requestValue = funds;
             releaseFunds(id); // close the fund
         }
         escrows[id].funds = escrows[id].funds - requestValue;
+
+        //keep this user out for a while
+        lockTime[msg.sender] = block.timestamp + 4 hours;
+
         return requestValue;
     }
 
